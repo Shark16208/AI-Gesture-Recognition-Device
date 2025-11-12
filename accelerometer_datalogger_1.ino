@@ -1,4 +1,4 @@
-/* Code to intialialze data logging. Ensures vibration data recieved from acceleromemter */
+// Simple data logger: read LIS3DH and print raw x/y/z over Serial
 #include <Wire.h>
 #include <Adafruit_LIS3DH.h>
 #include <Adafruit_Sensor.h>
@@ -17,14 +17,14 @@
 
 Adafruit_LIS3DH lis = Adafruit_LIS3DH(&Wire1);
 
-/* Global variables definitions */
+// State
 static uint16_t neai_ptr = 0;
 static float neai_buffer[SENSOR_SAMPLES * AXIS] = {0.0};
 
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
 
-  /* Init I2C connection between board & sensor */
+  // Initialize LIS3DH over I2C
   if(!lis.begin(SENSOR_I2C_ADDR)) {
     Serial.println("Can't initialize I2C comm with LIS3DH sensor...\n");
     while(1);
@@ -38,31 +38,30 @@ void setup() {
 }
 
 void loop() {
-  /* Get data in the neai buffer */
+  // Collect one window of samples
   while(neai_ptr < SENSOR_SAMPLES) {
-     /* Check if new data if available */
+     // Wait for a fresh sample
     if(lis.haveNewData()) {
-      /* If new data is available to be read*/
+      // Read the sample
       lis.read();
-      /* Fill neai buffer with new accel data */
+      // Copy x/y/z into the window
       neai_buffer[AXIS * neai_ptr] = (float) lis.x;
       neai_buffer[(AXIS * neai_ptr) + 1] = (float) lis.y;
       neai_buffer[(AXIS * neai_ptr) + 2] = (float) lis.z;
-      /* Increment neai pointer */
+      // Advance index
       neai_ptr++;
     }
   }
-  /* Reset pointer */
+  // Start next window
   neai_ptr = 0;
 
   
-  /* Print the whole buffer to the serial */
+  // Dump the window over Serial (space-separated)
   for(uint16_t i = 0; i < AXIS * SENSOR_SAMPLES; i++) {
     Serial.print((String)neai_buffer[i] + " ");
   }
   Serial.print("\n");
 
-
-  /* Clean neai buffer */
+  // Clear buffer for the next pass
   memset(neai_buffer, 0.0, AXIS * SENSOR_SAMPLES * sizeof(float));
 }
